@@ -1,4 +1,5 @@
 import numpy as np
+from functools import cmp_to_key
 # 计算优化目标：航空公司的跨航站楼，航系的跨航站楼
 def calculate_objective(chromo:np.array, airline_transport_num:np.array, airline_union2d:np.array, num_building:int, num_airline_union:int):
     assert len(chromo.shape) == 2, 'chromo must be 2D array'
@@ -38,3 +39,51 @@ def calculate_crowding_distance(objective:np.array):
     # 计算总拥挤度
     crowding_distance = crowding_distance.sum(axis=1)
     return crowding_distance
+
+
+
+# 非支配排序比较函数，优先级为
+# 1.符合限制或违约次数少的
+# 2.Pareto层级低的
+# 3.拥挤度高的
+def non_dominated_comparator(a:np.array, b:np.array):
+    # (a, b)是两个特征向量
+    # [违约程度，拥挤度，[目标函数]]
+
+    # 一个符合约束而另一个不符合时，取符合的那个
+    # 两个都不符合时，取违约小的那个
+    if a[0] != b[0]:
+        return a[0] < b[0]
+    # 同时符合约束，或违约程度相同
+    # a[0] == b[0]
+    else:
+        # 检查目标函数
+        objective_less = (a[2:] < b[2:]).all()
+        objective_equal = (a[2:] < b[2:]).any()
+        crowding_distance_greater = a[1] > b[1]
+        # 目标函数Pareto层级更低
+        if objective_less:
+            return True
+        elif objective_equal and crowding_distance_greater:
+            return True
+        else:
+            return False
+
+# 非支配排序，优先级为
+# 1.符合限制或违约次数少的
+# 2.Pareto层级低的
+# 3.拥挤度高的
+def non_dominated_sorting(violation:np.array, objective:np.array, crowding_distance:np.array):
+    assert len(violation.shape) == 1, 'violation must be 1D array'
+    assert len(objective.shape) == 2, 'objective must be 2D array'
+    assert len(crowding_distance.shape) == 1, 'crowding_distance must be 1D array'
+    num_chromo, num_objective = objective.shape
+    features = np.concatenate((
+        violation.reshape(num_chromo, 1), 
+        crowding_distance.reshape(num_chromo, 1),
+        objective 
+    ), axis=1)
+    # 自定义比较函数，依据优先级
+    keys = np.apply_along_axis(cmp_to_key(non_dominated_comparator), axis=1, arr=features)
+    index = np.argsort(keys)
+    return index

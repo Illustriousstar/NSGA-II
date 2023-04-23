@@ -16,9 +16,15 @@ def restriction1(chromo:np.array, airline_people_num:np.array, airline_building_
     airline_people_num = airline_people_num.reshape(1, 1, num_airline)
     people_in_building = np.sum(airline_in_building * airline_people_num, axis=2)
     result = (people_in_building <= airline_building_max.reshape(1, num_building)).sum(axis=1)==3
+
+    # 计算违反约束的误差
+    violation = people_in_building - airline_building_max.reshape(1, num_building)
+    violation = violation * (violation > 0)
+    violation = violation.sum(axis=1)
+
     # 返回每一个解是否可行，可行为True，不可行为False
     # [解的数目]
-    return result
+    return result, violation
 
 # 第二个约束函数，保证航空公司分配航站楼且唯一
 # 不用做，天然就对
@@ -50,9 +56,23 @@ def restriction4(chromo:np.array):
 def restrict_solution(solution:np.array, airline_people_num:np.array, airline_building_max:np.array,
                       hard_restriction:bool=True):
     num_building = len(airline_building_max)
-    result = restriction1(solution, airline_people_num, airline_building_max) if hard_restriction else np.ones(solution.shape[0], dtype=bool)
-    result = result & restriction2(solution)
-    result = result & restriction3(solution, num_building)
-    result = result & restriction4(solution)
+    if hard_restriction:
+        result1, violation1 = restriction1(solution, airline_people_num, airline_building_max)
+    else:
+        result1 = np.ones(solution.shape[0], dtype=bool)
+    result3 = restriction3(solution, num_building)
+    result = result1 & result3
     return result
+
+def restrict_solution_violation(solution:np.array, airline_people_num:np.array, airline_building_max:np.array,
+                                hard_restriction:bool=True):
+    num_building = len(airline_building_max)
+    if hard_restriction:
+        result1, violation1 = restriction1(solution, airline_people_num, airline_building_max)
+    else:
+        result1 = np.ones(solution.shape[0], dtype=bool)
+        violation1 = np.zeros(solution.shape[0], dtype=int)
+    result3 = restriction3(solution, num_building)
+    result = result1 & result3
+    return violation1
 

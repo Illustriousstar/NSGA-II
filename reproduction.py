@@ -14,7 +14,6 @@ def crossover(solution:np.array, prob_crossover:float, restriction_func=None, ma
     # 打乱顺序
     np.random.shuffle(solution)
     # 选取偶数个解，用于交叉
-    # 如果解的数量为奇数，则将最后一个解直接复制到输出解集中
     if num_chromo % 2 == 1:
         solution = solution[:-1, :]
     # [配对数, 2, 航空公司数]
@@ -22,6 +21,9 @@ def crossover(solution:np.array, prob_crossover:float, restriction_func=None, ma
 
     # 按概率决定每对是否交叉
     chromo_to_crossover = np.random.rand(num_chromo // 2) < prob_crossover
+    # 不交叉的直接加入输出解集
+    solution_out = np.concatenate((solution_out, solution[~chromo_to_crossover, :, :].reshape(-1, num_airline)), axis=0)
+    # 交叉的加入输入解集
     solution = solution[chromo_to_crossover, :, :]
     # 循环确保一定交叉
     iter = 0
@@ -59,10 +61,15 @@ def mutate(solution:np.array, prob_mutation:float, num_building:int, restriction
     num_chromo, num_airline = solution.shape
     assert num_chromo >= 2, 'num_chromo must be greater than 2'
     
+
+    solution_out = np.zeros((0, num_airline), dtype=int)
+
     # 按概率决定每个染色体是否变异
     chromo_to_mutate = np.random.rand(num_chromo) < prob_mutation
+    # 不变异的直接加入输出解集
+    solution_out = np.concatenate((solution_out, solution[~chromo_to_mutate, :]), axis=0)
+    # 变异的加入输入解集
     solution = solution[chromo_to_mutate, :]
-    solution_out = np.zeros((0, num_airline), dtype=int)
     iter = 0
     while iter < max_iter and solution.shape[0] != 0:
         # 每个染色体随机选择一个基因变异
@@ -82,6 +89,36 @@ def mutate(solution:np.array, prob_mutation:float, num_building:int, restriction
         solution_out = np.concatenate((solution_out, solution_mutate), axis=0)
         # 从输入解集中删除已经变异的解
         solution = solution[~result, :]
+    return solution_out
+
+# 选择种群，二元锦标赛选择算子
+def binary_tournament_selection(solution:np.array, objective:np.array, num_chromo_out:int, restriction_func):
+    assert len(solution.shape) == 2, 'solution must be 2D array'
+    assert len(objective.shape) == 2, 'objective must be 2D array'
+    num_chromo, num_airline = solution.shape
+    assert num_chromo >= 2, 'num_chromo must be greater than 2'
+    assert num_chromo >= num_chromo_out, 'num_chromo must be greater than num_chromo_out'
+
+    # 选择种群，批量处理
+    solution_out = np.zeros((0, num_airline), dtype=int)
+    # 选择两批解
+    indices = np.random.choice(num_chromo, size=(2, num_chromo), replace=True)
+    # 比较两批解
+    # 符合限制条件的解
+    solution1 = solution[indices[0], :]
+    solution2 = solution[indices[1], :]
+    result1 = restriction_func(solution1).astype(int)
+    result2 = restriction_func(solution2).astype(int)
+    restriction_priority_high = result1 > result2
+    restriction_priority_equal = result1 == result2
+    # Pareto层级更优，所有目标都小于对方
+    objective_less = (objective[indices[0]] < objective[indices[1]]).all(axis=1)
+    # 选择较好的解
+    index = np.where(restriction_priority_high, indices[0], indices[1])
+    index = np.where(restriction_priority_equal & objective_less, indices[0], index)
+    # 将较好的解加入解集
+    solution_out = np.concatenate((solution_out, solution[index]), axis=0)
+
     return solution_out
 
 # 选择种群，二元锦标赛选择算子
@@ -124,3 +161,20 @@ def selection(solution:np.array, objective:np.array, crowding_distance:np.array,
     # 取出指定数量的解
     solution_out = solution_out[:num_chromo_out]
     return solution_out
+
+def reprocude(solution:np.array, objective:np.array, 
+              prob_crossover:float, prob_mutation:float,
+              num_building:int,
+              restriction_func_hard, restriction_func_soft):
+    assert len(solution.shape) == 2, 'solution must be 2D array'
+    assert len(objective.shape) == 2, 'objective must be 2D array'
+    num_chromo, num_airline = solution.shape
+
+    # 选择种群，产生子代
+    solution = binary_tournament_selection(solution, objective, num_chromo, restriction_func_hard)
+    # 交叉
+    solution = crossover(solution, prob_crossover, restriction_func_hard)
+    # 变异
+    solution = mutate(solution, prob_mutation, num_building, restriction_func_soft)
+
+    return solution
