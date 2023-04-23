@@ -18,7 +18,7 @@ from reproduction import reprocude
 #################
 
 iter_max = 150 # 迭代次数
-num_population = 3000 # 种群规模
+num_population = 1000 # 种群规模
 prob_crossover = 0.9 # 交叉概率
 prob_mutate = 0.1 # 变异概率
 
@@ -119,13 +119,14 @@ for iter_num in range(iter_max):
 
 # 迭代结束，输出最优解
 # 按评价排序
-solution = solution[restrict_func_hard(solution)]
+violation = violation_func(solution)
 objective = calculate_objective(solution, airline_transport_num, airline_union2d, num_building, num_airline_union)
-index = np.lexsort(objective.T)
-solution = solution[index]
-objective = objective[index]
+crowding_distance = calculate_crowding_distance(objective)
+solution_index = non_dominated_sorting(violation, objective, crowding_distance)
+
+samples = solution_index[:100]
 # 画评价函数的散点图
-plt.scatter(objective[:, 0], objective[:, 1])
+plt.scatter(objective[samples, 0], objective[samples, 1])
 plt.show()
 # 保存结果
 np.savetxt('solution.csv', solution, delimiter=',', fmt='%d')

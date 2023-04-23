@@ -53,7 +53,10 @@ def non_dominated_comparator(a:np.array, b:np.array):
     # 一个符合约束而另一个不符合时，取符合的那个
     # 两个都不符合时，取违约小的那个
     if a[0] != b[0]:
-        return a[0] < b[0]
+        if a[0] < b[0]:
+            return 1
+        else: 
+            return -1
     # 同时符合约束，或违约程度相同
     # a[0] == b[0]
     else:
@@ -63,11 +66,14 @@ def non_dominated_comparator(a:np.array, b:np.array):
         crowding_distance_greater = a[1] > b[1]
         # 目标函数Pareto层级更低
         if objective_less:
-            return True
+            return 1
         elif objective_equal and crowding_distance_greater:
-            return True
+            return 1
+        elif objective_equal and not crowding_distance_greater:
+            return -1
         else:
-            return False
+            # objective_greater
+            return -1
 
 # 非支配排序，优先级为
 # 1.符合限制或违约次数少的
@@ -85,5 +91,6 @@ def non_dominated_sorting(violation:np.array, objective:np.array, crowding_dista
     ), axis=1)
     # 自定义比较函数，依据优先级
     keys = np.apply_along_axis(cmp_to_key(non_dominated_comparator), axis=1, arr=features)
-    index = np.argsort(keys)
+    index = np.argsort(keys)[::-1]
+    # print(features[index[:10]])
     return index
