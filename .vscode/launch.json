@@ -11,6 +11,15 @@
             "program": "nsga2.py",
             "console": "integratedTerminal",
             "justMyCode": true
-        }
+        },
+
+        {
+            "name": "check_data",
+            "type": "python",
+            "request": "launch",
+            "program": "check_data.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ],
 }

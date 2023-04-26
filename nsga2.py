@@ -1,8 +1,6 @@
 #  这是Kalyanmoy Deb教授流行的NSGA-II算法的python实现
 
 # 导入模块
-import math
-import random
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
