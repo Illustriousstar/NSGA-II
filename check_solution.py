@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from metrics import calculate_objective, non_dominated_sorting_pareto, non_dominated_comparator_pareto
-from restrictions import restrict_solution
+from metrics import calculate_objective, non_dominated_sorting
+from restrictions import restrict_solution, restrict_solution_violation
 
 airline_transport_num=pd.read_csv('test.csv',header=None)
 airline_people_raw = pd.read_excel("高峰小时旅客运输量.xlsx", header=None)
@@ -51,25 +51,13 @@ solution = np.unique(solution, axis=0)
 solution = solution[restrict_solution(solution, airline_people_num, airline_building_max, hard_restriction=True)]
 print(f"满足约束条件的方案数量: {len(solution)}")
 # 非支配排序
+violations = restrict_solution_violation(solution, airline_people_num, airline_building_max)
 objective = calculate_objective(solution, airline_transport_num, airline_union2d, num_building, num_airline_union)
-index = non_dominated_sorting_pareto(objective)
-solution = solution[index]
-objective = objective[index]
-
-# 利用比较函数找到Pareto前沿面
-pareto_bounds = []
-for i in range(1, len(solution)):
-    if non_dominated_comparator_pareto(objective[i-1], objective[i]) == 1:
-        pareto_bounds.append(i)
-print(pareto_bounds)
-print(objective[:10])
-
-# 绘制Pareto前沿面
-num_layers_selected = 5
-num_solution_selected = pareto_bounds[num_layers_selected-1]
+pareto_layer = non_dominated_sorting(violations, objective)
+# 绘制Pareto前沿
 plt.figure()
-plt.scatter(objective[:, 0], objective[:, 1], c='b', marker='o')
-plt.scatter(objective[:num_solution_selected, 0], objective[:num_solution_selected, 1], c='r', marker='o')
-plt.xlabel('Objective 1')
-plt.ylabel('Objective 2')
+plt.scatter(objective[:, 0], objective[:, 1], c=pareto_layer, cmap='rainbow')
+plt.xlabel('people number')
+plt.ylabel('union cross building number')
+plt.title('Pareto Front')
 plt.show()

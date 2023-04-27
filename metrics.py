@@ -40,41 +40,6 @@ def calculate_crowding_distance(objective:np.array):
     crowding_distance = crowding_distance.sum(axis=1)
     return crowding_distance
 
-
-
-# 非支配排序比较函数，优先级为
-# 1.符合限制或违约次数少的
-# 2.Pareto层级低的
-# 3.拥挤度高的
-def non_dominated_comparator(a:np.array, b:np.array):
-    # (a, b)是两个特征向量
-    # [违约程度，拥挤度，[目标函数]]
-
-    # 一个符合约束而另一个不符合时，取符合的那个
-    # 两个都不符合时，取违约小的那个
-    if a[0] != b[0]:
-        if a[0] < b[0]:
-            return 1
-        else: 
-            return -1
-    # 同时符合约束，或违约程度相同
-    # a[0] == b[0]
-    else:
-        # 检查目标函数
-        objective_less = (a[2:] <= b[2:]).all()
-        objective_equal = (a[2:] < b[2:]).any()
-        crowding_distance_greater = a[1] > b[1]
-        # 目标函数Pareto层级更低
-        if objective_less:
-            return 1
-        elif objective_equal and crowding_distance_greater:
-            return 1
-        elif objective_equal and not crowding_distance_greater:
-            return -1
-        else:
-            # objective_greater
-            return -1
-
 # 非支配排序，优先级为
 # 1.符合限制或违约次数少的
 # 2.Pareto层级低的
@@ -118,28 +83,3 @@ def non_dominated_sorting(violation:np.array, objective:np.array):
     # 比较矩阵转换为排序索引
     # index = np.argsort(pareto_layer)
     return pareto_layer
-
-# 非支配排序比较函数，只比较Pareto层级，不考虑拥挤度和违约程度
-def non_dominated_comparator_pareto(a:np.array, b:np.array):
-    # (a, b)是两个特征向量objective=
-    objective_less = (a <= b).all()
-    objective_equal = (a < b).any()
-
-    # 目标函数Pareto层级更低
-    if objective_less:
-        return 1
-    elif objective_equal:
-        return 0
-    else:
-        return -1
-
-
-# 非支配排序，只比较Pareto层级，不考虑拥挤度和违约程度
-def non_dominated_sorting_pareto(objective:np.array):
-    assert len(objective.shape) == 2, 'objective must be 2D array'
-    num_chromo, num_objective = objective.shape
-    features = objective
-    # 自定义比较函数，依据优先级
-    keys = np.apply_along_axis(cmp_to_key(non_dominated_comparator_pareto), axis=1, arr=features)
-    index = np.argsort(keys)[::-1]
-    return index
