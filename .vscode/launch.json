@@ -21,5 +21,14 @@
             "console": "integratedTerminal",
             "justMyCode": true
         },
+
+        {
+            "name": "check_solution",
+            "type": "python",
+            "request": "launch",
+            "program": "check_solution.py",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
     ],
 }

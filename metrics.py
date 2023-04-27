@@ -61,7 +61,7 @@ def non_dominated_comparator(a:np.array, b:np.array):
     # a[0] == b[0]
     else:
         # 检查目标函数
-        objective_less = (a[2:] < b[2:]).all()
+        objective_less = (a[2:] <= b[2:]).all()
         objective_equal = (a[2:] < b[2:]).any()
         crowding_distance_greater = a[1] > b[1]
         # 目标函数Pareto层级更低
@@ -78,19 +78,68 @@ def non_dominated_comparator(a:np.array, b:np.array):
 # 非支配排序，优先级为
 # 1.符合限制或违约次数少的
 # 2.Pareto层级低的
-# 3.拥挤度高的
-def non_dominated_sorting(violation:np.array, objective:np.array, crowding_distance:np.array):
+def non_dominated_sorting(violation:np.array, objective:np.array):
     assert len(violation.shape) == 1, 'violation must be 1D array'
     assert len(objective.shape) == 2, 'objective must be 2D array'
-    assert len(crowding_distance.shape) == 1, 'crowding_distance must be 1D array'
     num_chromo, num_objective = objective.shape
-    features = np.concatenate((
-        violation.reshape(num_chromo, 1), 
-        crowding_distance.reshape(num_chromo, 1),
-        objective 
-    ), axis=1)
+
     # 自定义比较函数，依据优先级
-    keys = np.apply_along_axis(cmp_to_key(non_dominated_comparator), axis=1, arr=features)
+    violation_less = (violation.reshape(num_chromo, 1) < violation.reshape(1, num_chromo))
+    violation_equal = (violation.reshape(num_chromo, 1) == violation.reshape(1, num_chromo))
+    objective_less = (objective.reshape(num_chromo, 1, num_objective) <= objective.reshape(1, num_chromo, num_objective)).all(axis=2)
+    objective_same = (objective.reshape(num_chromo, 1, num_objective) == objective.reshape(1, num_chromo, num_objective)).all(axis=2)
+    # 先置为优先级低
+    compare_matrix = np.zeros((num_chromo, num_chromo), dtype=bool)
+    # 违约程度低的优先级高
+    compare_matrix[violation_less] = True
+    # 违约程度相同，Pareto层级低的优先级高（包括自己，注意排除）
+    compare_matrix[violation_equal & objective_less] = True
+    # 违约程度相同，Pareto层级相同，目标函数相同，取消优先级
+    compare_matrix[violation_equal & objective_same] = False
+    # compare_matrix[violation_equal & objective_greater] = False
+    # compare_matrix[violation_greater] = False
+    # 创建输入索引和输出排序索引
+    index_input = np.arange(num_chromo)
+    pareto_layer = np.zeros(num_chromo, dtype=int)
+    # 循环排序
+    cur_pareto_layer = 0
+    while index_input.size > 0:
+        # 优先级不被别人支配的
+        pareto_layer_map = (~compare_matrix[index_input][:, index_input]).all(axis=0)
+        # 输出索引
+        index_output = index_input[pareto_layer_map]
+        # 从输入索引中删除
+        index_input = index_input[~pareto_layer_map]
+        # 指定Pareto层级
+        pareto_layer[index_output] = cur_pareto_layer
+        # 下一层级
+        cur_pareto_layer += 1
+
+    # 比较矩阵转换为排序索引
+    # index = np.argsort(pareto_layer)
+    return pareto_layer
+
+# 非支配排序比较函数，只比较Pareto层级，不考虑拥挤度和违约程度
+def non_dominated_comparator_pareto(a:np.array, b:np.array):
+    # (a, b)是两个特征向量objective=
+    objective_less = (a <= b).all()
+    objective_equal = (a < b).any()
+
+    # 目标函数Pareto层级更低
+    if objective_less:
+        return 1
+    elif objective_equal:
+        return 0
+    else:
+        return -1
+
+
+# 非支配排序，只比较Pareto层级，不考虑拥挤度和违约程度
+def non_dominated_sorting_pareto(objective:np.array):
+    assert len(objective.shape) == 2, 'objective must be 2D array'
+    num_chromo, num_objective = objective.shape
+    features = objective
+    # 自定义比较函数，依据优先级
+    keys = np.apply_along_axis(cmp_to_key(non_dominated_comparator_pareto), axis=1, arr=features)
     index = np.argsort(keys)[::-1]
-    # print(features[index[:10]])
     return index

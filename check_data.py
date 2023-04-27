@@ -1,7 +1,5 @@
 # 此文件用于检验现有分配方案的指标
 # 导入模块
-import math
-import random
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np

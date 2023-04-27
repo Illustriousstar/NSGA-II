@@ -96,11 +96,14 @@ for iter_num in range(iter_max):
     # 去重
     solution = np.unique(solution, axis=0)
 
-    # 快速非支配排序
+    # 计算各项指标
     violation = violation_func(solution)
     objective = calculate_objective(solution, airline_transport_num, airline_union2d, num_building, num_airline_union)
     crowding_distance = calculate_crowding_distance(objective)
-    solution_index = non_dominated_sorting(violation, objective, crowding_distance)
+    # 快速非支配排序
+    pareto_layer = non_dominated_sorting(violation, objective)
+    features = np.stack((-crowding_distance, pareto_layer), axis=1)
+    solution_index = np.lexsort(features.transpose())
     # 按排序结果取出解
     solution = solution[solution_index[:num_population]]
 
