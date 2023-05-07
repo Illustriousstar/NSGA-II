@@ -5,7 +5,6 @@ import pandas as pd
 
 from metrics import calculate_objective, non_dominated_sorting
 from restrictions import restrict_solution, restrict_solution_violation
-
 airline_transport_num=pd.read_csv('test.csv',header=None)
 airline_people_raw = pd.read_excel("高峰小时旅客运输量.xlsx", header=None)
 airline_union_raw=pd.read_excel('所属航系.xlsx')
@@ -35,7 +34,7 @@ airline_transport_num = []
 for i in range(num_airline):
     airline_transport_num.append([])
     for j in range(num_airline):
-        airline_transport_num[i].append(airline2num.get(airline_list[i]+'_'+airline_list[j],0) / 2.)
+        airline_transport_num[i].append(airline2num.get(airline_list[i]+'_'+airline_list[j],0))
 airline_transport_num = np.array(airline_transport_num,dtype=int)
 
 # 航空公司高峰人流量
@@ -54,7 +53,12 @@ print(f"满足约束条件的方案数量: {len(solution)}")
 violations = restrict_solution_violation(solution, airline_people_num, airline_building_max)
 objective = calculate_objective(solution, airline_transport_num, airline_union2d, num_building, num_airline_union)
 pareto_layer = non_dominated_sorting(violations, objective)
+
+layers = 1
 # 绘制Pareto前沿
+solution = solution[pareto_layer < layers]
+objective = objective[pareto_layer < layers]
+pareto_layer = pareto_layer[pareto_layer < layers]
 plt.figure()
 plt.scatter(objective[:, 0], objective[:, 1], c=pareto_layer, cmap='rainbow')
 plt.xlabel('people number')
