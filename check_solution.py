@@ -5,6 +5,8 @@ import pandas as pd
 
 from metrics import calculate_objective, non_dominated_sorting
 from restrictions import restrict_solution, restrict_solution_violation
+from topsis import topsis
+
 airline_transport_num=pd.read_csv('test.csv',header=None)
 airline_people_raw = pd.read_excel("高峰小时旅客运输量.xlsx", header=None)
 airline_union_raw=pd.read_excel('所属航系.xlsx')
@@ -54,14 +56,40 @@ violations = restrict_solution_violation(solution, airline_people_num, airline_b
 objective = calculate_objective(solution, airline_transport_num, airline_union2d, num_building, num_airline_union)
 pareto_layer = non_dominated_sorting(violations, objective)
 
-layers = 1
-# 绘制Pareto前沿
-solution = solution[pareto_layer < layers]
-objective = objective[pareto_layer < layers]
-pareto_layer = pareto_layer[pareto_layer < layers]
+# layers = 1
+# # 绘制Pareto前沿
+# solution = solution[pareto_layer < layers]
+# objective = objective[pareto_layer < layers]
+# pareto_layer = pareto_layer[pareto_layer < layers]
+
+# 根据指标排序
+sort_index = np.argsort(objective[:, 0])
+solution = solution[sort_index]
+objective = objective[sort_index]
+pareto_layer = pareto_layer[sort_index]
+
 plt.figure()
 plt.scatter(objective[:, 0], objective[:, 1], c=pareto_layer, cmap='rainbow')
 plt.xlabel('people number')
 plt.ylabel('union cross building number')
 plt.title('Pareto Front')
 plt.show()
+
+# 计算TOPSIS得分
+objective_norm = objective / np.linalg.norm(objective, axis=0)
+objective_under_weight = []
+for weight in np.linspace(0, 1, 101):
+    weights = np.array([weight, 1-weight])
+    Result, Z, weights_ = topsis(objective, weights)
+    objective_ = Result.iloc[0, :2].to_numpy().astype(int)
+    objective_under_weight.append(objective_)
+objective_under_weight = np.array(objective_under_weight)
+weight = np.array([0.2, 0.8])
+Result, Z, weight = topsis(objective, weight)
+# 保存到excel
+writer = pd.ExcelWriter('综合评价结果.xlsx')
+pd.DataFrame(objective, columns=['中转人数', '同航系跨楼数']).to_excel(writer, sheet_name="目标函数值",index=False)
+pd.DataFrame(objective_norm, columns=['中转人数', '同航系跨楼数']).to_excel(writer, sheet_name="归一化目标函数值",index=False)
+pd.DataFrame(objective_under_weight, columns=['中转人数', '同航系跨楼数']).to_excel(writer, sheet_name="权重组合下目标函数值",index=False)
+pd.DataFrame(Result).to_excel(writer, sheet_name="TOPSIS 0.2权重",index=False)
+writer.close()
