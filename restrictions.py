@@ -15,7 +15,7 @@ def restriction1(chromo:np.array, airline_people_num:np.array, airline_building_
     airline_in_building = (chromo.reshape(num_chromo, 1, num_airline) == building_id).astype(int)
     airline_people_num = airline_people_num.reshape(1, 1, num_airline)
     people_in_building = np.sum(airline_in_building * airline_people_num, axis=2)
-    result = (people_in_building <= airline_building_max.reshape(1, num_building)).sum(axis=1)==3
+    result = (people_in_building <= airline_building_max.reshape(1, num_building)).sum(axis=1)==num_building
 
     # 计算违反约束的误差
     violation = people_in_building - airline_building_max.reshape(1, num_building)
@@ -41,7 +41,7 @@ def restriction3(chromo:np.array, num_building:int):
     # [解的数目, 航站楼数目, 航空公司数目]
     building_id = np.arange(num_building).reshape(1, num_building, 1)
     airline_in_building = (chromo.reshape(num_chromo, 1, num_airline) == building_id).astype(int)
-    result = (airline_in_building.sum(axis=2) > 0).sum(axis=1)==3
+    result = (airline_in_building.sum(axis=2) > 0).sum(axis=1)==num_building
     # 返回每一个解是否可行，可行为True，不可行为False
     # [解的数目]
     return result
